@@ -1,0 +1,8 @@
+{
+  "main": "server/main.ts",
+  "name": "spyfall",
+  "serve": {
+    "path": "server/public"
+  },
+  "compatibilityDate": "2024-12-26"
+}
