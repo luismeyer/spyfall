@@ -1,43 +1,9 @@
 "use client";
 
-import usePartySocket from "partysocket/react";
-import type { Game, GameMessage } from "@/server/lib/messages";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useGame } from "../provider";
 
-type RoomProps = {
-  defaultGame: Game;
-  host: string;
-  token: string;
-};
-
-export function Room({ defaultGame, host, token }: RoomProps) {
-  const [game, setGame] = useState<Game>(defaultGame);
-
-  const router = useRouter();
-
-  const socket = usePartySocket({
-    host,
-    party: "main",
-    room: game.id,
-    query: { token },
-    onOpen(e) {
-      console.log("open", e);
-    },
-    onMessage(event: MessageEvent<string>) {
-      const message = JSON.parse(event.data) as GameMessage;
-
-      if (message.type === "sync") {
-        setGame(message.game);
-      }
-
-      if (message.type === "close") {
-        router.push("/");
-      }
-
-      console.log("message", event.data);
-    },
-  });
+export function Room() {
+  const game = useGame();
 
   return (
     <div className="flex gap-8">
