@@ -1,6 +1,7 @@
 export type Location = {
   id: string;
   name: string;
+  disabled?: boolean;
 };
 
 export const DefaultLocations: Location[] = [

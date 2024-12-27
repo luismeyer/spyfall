@@ -1,6 +1,6 @@
 "use client";
 
-import type { Game, GameMessage } from "@/server/lib/messages";
+import type { Game, GameMessage, UserMessage } from "@/server/lib/messages";
 import { useRouter } from "next/navigation";
 import usePartySocket from "partysocket/react";
 import {
@@ -16,12 +16,15 @@ type Props = PropsWithChildren & {
   token: string;
 };
 
-const GameContext = createContext<Game>({
+type GameContextType = Game & { dispatch: (msg: UserMessage) => void };
+
+const GameContext = createContext<GameContextType>({
   hostId: "",
   id: "",
   players: [],
   locations: [],
   state: "lobby",
+  dispatch: () => {},
 });
 
 export function GameProvider({ children, defaultGame, host, token }: Props) {
@@ -29,9 +32,9 @@ export function GameProvider({ children, defaultGame, host, token }: Props) {
 
   const [game, setGame] = useState<Game>(defaultGame);
 
-  usePartySocket({
-    host,
+  const socket = usePartySocket({
     party: "main",
+    host,
     room: game.id,
     query: { token },
     onMessage(event: MessageEvent<string>) {
@@ -49,7 +52,15 @@ export function GameProvider({ children, defaultGame, host, token }: Props) {
     },
   });
 
-  return <GameContext.Provider value={game}>{children}</GameContext.Provider>;
+  function dispatch(msg: UserMessage) {
+    socket.send(JSON.stringify(msg));
+  }
+
+  return (
+    <GameContext.Provider value={{ ...game, dispatch }}>
+      {children}
+    </GameContext.Provider>
+  );
 }
 
 export function useGame() {

@@ -4,7 +4,7 @@ import { error, json, notFound, ok } from "./lib/response";
 import { verifyToken, type User } from "./lib/user";
 import {
   gameMessage,
-  type CloseGameMessage,
+  type UserMessage,
   type Game,
   type SyncGameMessage,
 } from "./lib/messages";
@@ -84,23 +84,6 @@ export default class Server implements Party.Server {
       return json<SyncGameMessage>({ type: "sync", game: this.state });
     }
 
-    if (request.method === "DELETE") {
-      if (this.state?.hostId !== user.id) {
-        return error("Not host");
-      }
-
-      this.room.broadcast(gameMessage({ type: "close" }));
-
-      for (const connection of this.room.getConnections()) {
-        connection.close();
-      }
-
-      this.state = undefined;
-      await this.persistGame();
-
-      return ok();
-    }
-
     if (request.method === "OPTIONS") {
       return ok();
     }
@@ -110,7 +93,7 @@ export default class Server implements Party.Server {
 
   async onConnect(
     connection: GameConnection,
-    { request }: Party.ConnectionContext
+    { request }: Party.ConnectionContext,
   ) {
     await this.loadPersistedGame();
     if (!this.state) {
@@ -150,6 +133,67 @@ export default class Server implements Party.Server {
     this.state.players = this.state.players.filter((p) => p.id !== user.id);
 
     this.room.broadcast(gameMessage({ type: "sync", game: this.state }));
+  }
+
+  async onMessage(messageString: string, connection: GameConnection) {
+    await this.loadPersistedGame();
+    if (!this.state) {
+      return;
+    }
+
+    const user = connection.state?.user;
+    if (!user) {
+      return;
+    }
+
+    const message = JSON.parse(messageString) as UserMessage;
+
+    if (message.type === "close") {
+      if (this.state?.hostId !== user.id) {
+        return;
+      }
+
+      this.room.broadcast(gameMessage({ type: "close" }));
+
+      for (const connection of this.room.getConnections()) {
+        connection.close();
+      }
+
+      this.state = undefined;
+      await this.persistGame();
+    }
+
+    if (message.type === "startRound") {
+      if (this.state?.hostId !== user.id) {
+        return;
+      }
+
+      const locations = this.state.locations.filter((l) => !l.disabled);
+      const newLocation =
+        locations[Math.floor(Math.random() * locations.length)];
+
+      if (this.state.state === "lobby") {
+        this.state = {
+          ...this.state,
+          state: "playing",
+          location: newLocation,
+          round: {
+            current: 1,
+            startedAt: Date.now(),
+          },
+        };
+      } else {
+        this.state.location.disabled = true;
+
+        this.state.location = newLocation;
+        this.state.round.current = this.state.round.current + 1;
+        this.state.round.startedAt = Date.now();
+      }
+
+      await this.persistGame();
+
+      this.room.broadcast(gameMessage({ type: "sync", game: this.state }));
+    }
   }
 }
 

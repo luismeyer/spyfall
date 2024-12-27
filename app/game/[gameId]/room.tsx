@@ -1,6 +1,6 @@
 "use client";
 
-import { useGame } from "../provider";
+import { useGame } from "./provider";
 
 export function Room() {
   const game = useGame();

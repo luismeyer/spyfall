@@ -1,13 +1,11 @@
-import { PartyKitHost, PartyKitUrl } from "@/app/env";
-import { closeGame } from "@/server/actions/close-game";
+import { PartyKitHost } from "@/app/env";
+import { requestGameApi } from "@/server/lib/api";
 import type { SyncGameMessage } from "@/server/lib/messages";
 import { getUser, issueToken } from "@/server/lib/user";
 import { redirect } from "next/navigation";
+import { GameProvider } from "./provider";
+import { Meta } from "./meta";
 import { Room } from "./room";
-import { requestGameApi } from "@/server/lib/api";
-import Link from "next/link";
-import { Status } from "./status";
-import { GameProvider } from "../provider";
 
 type GameProps = {
   params: Promise<{
@@ -40,28 +38,15 @@ export default async function GamePage({ params }: GameProps) {
 
   return (
     <GameProvider defaultGame={room.game} host={PartyKitHost} token={token}>
-      <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-        <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-          <h1>
-            hallo {user.name}, hier ist das spiel mit nummer {room.game.id}
-          </h1>
+      <main className="p-16 flex flex-col gap-8">
+        <h1>
+          hallo {user.name}, hier ist das spiel mit nummer {room.game.id}
+        </h1>
 
-          <Status />
+        <Meta isHost={isHost} />
 
-          {isHost ? (
-            <>
-              <form action={closeGame}>
-                <input type="hidden" name="gameId" defaultValue={gameId} />
-                <button type="submit">close</button>
-              </form>
-            </>
-          ) : (
-            <Link href="/">leave</Link>
-          )}
-
-          <Room />
-        </main>
-      </div>
+        <Room />
+      </main>
     </GameProvider>
   );
 }

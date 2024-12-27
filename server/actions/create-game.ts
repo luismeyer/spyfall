@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { getUser, setUser } from "../lib/user";
-import { PartyKitUrl } from "@/app/env";
 import { requestGameApi } from "../lib/api";
 
 async function validateUser(formdata: FormData) {

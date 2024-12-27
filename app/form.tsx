@@ -33,7 +33,10 @@ export function Form({ user }: FormProps) {
       />
 
       <div className="flex gap-2">
-        <button className="p-2" type="submit">
+        <button
+          className="outline-dashed rounded p-2 cursor-pointer"
+          type="submit"
+        >
           {gameId ? "Join Game" : "Create Game"}
         </button>
       </div>
