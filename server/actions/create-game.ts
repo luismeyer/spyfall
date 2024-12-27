@@ -3,33 +3,37 @@
 import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { getUser, setUser } from "../lib/user";
-import { PARTYKIT_URL } from "@/app/env";
+import { PartyKitUrl } from "@/app/env";
+import { requestGameApi } from "../lib/api";
 
 async function validateUser(formdata: FormData) {
   const user = await getUser();
   if (user) {
-    return true;
+    return user;
   }
 
   const name = formdata.get("name");
   if (name) {
-    setUser(name.toString());
-    return true;
+    return setUser(name.toString());
   }
-
-  return false;
 }
 
-export async function createGame(formdata: FormData) {
-  const validUser = await validateUser(formdata);
-  if (!validUser) {
+export async function createOrJoinGame(formdata: FormData) {
+  const user = await validateUser(formdata);
+  if (!user) {
     throw new Error("Invalid user");
   }
 
-  const gameId = nanoid();
+  let gameId = formdata.get("gameId")?.toString();
+  if (gameId) {
+    return redirect(`/game/${gameId}`);
+  }
 
-  await fetch(`${PARTYKIT_URL}/parties/chatroom/${gameId}`, {
+  gameId = nanoid();
+
+  await requestGameApi(gameId, {
     method: "POST",
+    user,
   });
 
   redirect(`/game/${gameId}`);

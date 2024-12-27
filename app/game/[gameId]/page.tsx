@@ -1,8 +1,11 @@
-import { PARTYKIT_URL } from "@/app/env";
+import { PartyKitHost, PartyKitUrl } from "@/app/env";
 import { closeGame } from "@/server/actions/close-game";
-import { GAME_PARTY_ID } from "@/server/game";
-import { getUser } from "@/server/lib/user";
+import type { SyncGameMessage } from "@/server/lib/messages";
+import { getUser, issueToken } from "@/server/lib/user";
 import { redirect } from "next/navigation";
+import { Room } from "./room";
+import { requestGameApi } from "@/server/lib/api";
+import Link from "next/link";
 
 type GameProps = {
   params: Promise<{
@@ -10,7 +13,7 @@ type GameProps = {
   }>;
 };
 
-export default async function Game({ params }: GameProps) {
+export default async function GamePage({ params }: GameProps) {
   const user = await getUser();
 
   if (!user) {
@@ -19,23 +22,39 @@ export default async function Game({ params }: GameProps) {
 
   const { gameId } = await params;
 
-  const url = `${PARTYKIT_URL}/parties/${GAME_PARTY_ID}/${gameId}`;
-  const res = await fetch(url);
-  const room = res.status === 404 ? undefined : await res.json();
+  const res = await requestGameApi(gameId, {
+    method: "GET",
+    user,
+  });
 
-  console.log(room);
+  if (!res.ok) {
+    redirect("/");
+  }
+
+  const room: SyncGameMessage = await res.json();
+  const isHost = room.game.hostId === user.id;
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
         <h1>
-          hier ist das spiel {user.name} mit nummer {gameId}
+          hallo {user.name}, hier ist das spiel mit nummer {room.game.id}
         </h1>
 
-        <form action={closeGame}>
-          <input type="hidden" name="gameId" defaultValue={gameId} />
-          <button type="submit">Close Game</button>
-        </form>
+        {isHost ? (
+          <form action={closeGame}>
+            <input type="hidden" name="gameId" defaultValue={gameId} />
+            <button type="submit">close</button>
+          </form>
+        ) : (
+          <Link href="/">leave</Link>
+        )}
+
+        <Room
+          host={PartyKitHost}
+          defaultGame={room.game}
+          token={await issueToken(user)}
+        />
       </main>
     </div>
   );

@@ -1,7 +1,14 @@
 import { nanoid } from "nanoid";
 import { cookies } from "next/headers";
+import * as jose from "jose";
 
-export const COOKIE_NAME = "spyfall-name";
+export const CookieName = "spyfall-name";
+
+const { JWT_SECRET } = process.env;
+if (!JWT_SECRET) {
+  throw new Error("Missing JWT_SECRET");
+}
+const secret = new TextEncoder().encode(JWT_SECRET);
 
 export type User = {
   id: string;
@@ -10,12 +17,12 @@ export type User = {
 
 export async function getUser() {
   const cookieStore = await cookies();
-  const name = cookieStore.get(COOKIE_NAME);
-  if (!name || !name.value) {
-    return null;
+  const cookie = cookieStore.get(CookieName);
+  if (!cookie || !cookie.value) {
+    return;
   }
 
-  return JSON.parse(name.value) as User;
+  return verifyToken(cookie.value);
 }
 
 export async function setUser(name: string) {
@@ -26,10 +33,38 @@ export async function setUser(name: string) {
     name,
   };
 
-  cookieStore.set(COOKIE_NAME, JSON.stringify(user));
+  const token = await issueToken(user);
+
+  cookieStore.set(CookieName, token);
+
+  return user;
 }
 
 export async function clearUser() {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(CookieName);
+}
+
+export async function issueToken(user: User) {
+  return new jose.SignJWT({ name: user.name })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer("spyfall")
+    .setSubject(user.id)
+    .sign(secret);
+}
+
+export async function verifyToken(token: string) {
+  const result = await jose.jwtVerify(token, secret);
+
+  if (!result.payload.name || !result.payload.sub) {
+    throw new Error("Invalid token");
+  }
+
+  const user: User = {
+    id: result.payload.sub,
+    name: result.payload.name as string,
+  };
+
+  return user;
 }

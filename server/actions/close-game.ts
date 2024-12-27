@@ -1,8 +1,9 @@
 "use server";
 
-import { PARTYKIT_URL } from "@/app/env";
+import { PartyKitUrl } from "@/app/env";
 import { redirect } from "next/navigation";
 import { getUser } from "../lib/user";
+import { requestGameApi } from "../lib/api";
 
 export async function closeGame(formdata: FormData) {
   const gameId = formdata.get("gameId");
@@ -15,9 +16,8 @@ export async function closeGame(formdata: FormData) {
     throw new Error("Missing user");
   }
 
-  await fetch(`${PARTYKIT_URL}/parties/chatroom/${gameId}`, {
+  await requestGameApi(gameId.toString(), {
+    user,
     method: "DELETE",
   });
-
-  redirect("/");
 }
